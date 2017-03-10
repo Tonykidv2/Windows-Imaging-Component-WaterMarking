@@ -1,8 +1,8 @@
 #include "Defines.h"
 #include <iostream>
 #include <wincodec.h>
-#include <fstream>
-#include <vector>
+#include <string>
+#include <sstream>
 using namespace std;
 
 
@@ -12,7 +12,7 @@ HRESULT LoadBitmapFromFile(
 	const wchar_t *uri,
 	unsigned int destinationWidth,
 	unsigned int destinationHeight,
-	IWICBitmapFrameDecode** bitmapSource);
+	IWICBitmapSource** bitmapSource);
 
 HRESULT SaveBitmapToFile(IWICBitmap* updatedBitmap,
 	const wchar_t *uriOriginalFile,
@@ -30,26 +30,63 @@ HRESULT LoadScaledBitmapFromFile(
 	unsigned int destinationHeight,
 	IWICBitmap** updatedBitmap);
 
+void Greeting();
+
 inline BYTE ByteLerp(int b1, int b2, float percent)
 {
-	BYTE returning = (b2 - b1) * percent + b1;
+	BYTE returning = BYTE((b2 - b1) * percent + b1);
 	return returning;
 }
 
 int main(int argc, char* argv[])
 {
-	/*if (argc != 2)
+	Greeting();
+	if (argc != 3)
 	{
 		cout << "Incorrect Parameters" << endl;
 		system("pause");
 		return -1;
-	}*/
+	}
 
+	cout << "Images Recieved" << endl;
+	cout << "Please Enter opacity Level between 0 - 100:  ";
+	
+	float opacity;
+	int Scale;
 
-	float opacity = .25f;
-	int Scale = 3;
-	IWICBitmapFrameDecode* bitmapBaseSource = nullptr;
-	IWICBitmapFrameDecode* bitmapScaleSource = nullptr;
+	cin >> opacity;
+	while (true)
+	{
+		if (opacity >= 0 && opacity <= 100)
+		{
+			break;
+		}
+		cin.ignore();
+		cout << "Please Enter opacity Level between 0 - 100:  ";
+		cin >> opacity;
+	}
+
+	//making a ratio
+	opacity /= 100;
+
+	cout << "*Image is currently stretched to the base image if the waterMark image is bigger than the base Image*" << endl;
+	cout << "Please Enter Scale Level between 0 - 100:  ";
+	cin >> Scale;
+	while (true)
+	{
+		if (Scale >= 0 && Scale <= 100)
+		{
+			break;
+		}
+		cin.ignore();
+		cout << "Please Enter Scale Level between 0 - 100:  ";
+		cin >> opacity;
+	}
+
+	cout << "Input Confirm Please Wait....." << endl;
+
+	IWICBitmapSource* bitmapBaseSource = nullptr;
+	IWICBitmapSource* bitmapScaleSource = nullptr;
 	IWICBitmap *pIBaseBitmap = nullptr;
 	IWICBitmap *pIScaledBitmap = nullptr;
 
@@ -57,7 +94,10 @@ int main(int argc, char* argv[])
 	CoInitialize(nullptr);
 	HRESULT hr = S_OK;
 	/////////////Getting backimage Image
-	hr = LoadBitmapFromFile(L"..\\Resources\\butterfly.bmp", 0, 0, &bitmapBaseSource);
+	size_t cSize = strlen(argv[1]) + 1;
+	wchar_t wc[255];
+	mbstowcs(wc, argv[1], cSize);
+	hr = LoadBitmapFromFile(wc, 0, 0, &bitmapBaseSource);
 	if (!SUCCEEDED(hr))
 	{
 		cout << "Something went wrong!!!" << endl;
@@ -77,32 +117,44 @@ int main(int argc, char* argv[])
 	hr = pIBaseBitmap->GetSize(&width, &height);
 
 	////////////Getting Scaled WaterMark
-	hr = LoadBitmapFromFile(L"..\\Resources\\butterfly.bmp", 0, 0, &bitmapScaleSource);
-	if (!SUCCEEDED(hr))
-	{
-		cout << "Something went wrong!!!" << endl;
-		system("pause");
-		return -1;
-	}
-	hr = LoadScaledBitmapFromFile(L"..\\Resources\\butterfly.bmp", width/Scale, height/Scale, &pIScaledBitmap);
-	if (!SUCCEEDED(hr))
-	{
-		cout << "Something went wrong!!!" << endl;
-		system("pause");
-		return -1;
-	}
 	UINT WaterMarkWidth;
 	UINT WaterMarkHeight;
+	cSize = strlen(argv[2]) + 1;
+	mbstowcs(wc, argv[2], cSize);
+	hr = LoadBitmapFromFile(wc, 0, 0, &bitmapScaleSource);
+	if (!SUCCEEDED(hr))
+	{
+		cout << "Something went wrong!!!" << endl;
+		system("pause");
+		return -1;
+	}
+	bitmapScaleSource->GetSize(&WaterMarkWidth, &WaterMarkHeight);
+	if (WaterMarkWidth >= width || WaterMarkHeight >= height)
+	{
+		hr = LoadScaledBitmapFromFile(/*L"..\\Resources\\Mountain.png"*/wc, width / Scale, height / Scale, &pIScaledBitmap);
+		if (!SUCCEEDED(hr))
+		{
+			cout << "Something went wrong!!!" << endl;
+			system("pause");
+			return -1;
+		}
+	}
+	else
+	{
+		hr = LoadScaledBitmapFromFile(/*L"..\\Resources\\Mountain.png"*/wc, WaterMarkWidth, WaterMarkWidth, &pIScaledBitmap);
+		if (!SUCCEEDED(hr))
+		{
+			cout << "Something went wrong!!!" << endl;
+			system("pause");
+			return -1;
+		}
+	}
 	pIScaledBitmap->GetSize(&WaterMarkWidth, &WaterMarkHeight);
 
 #pragma region minuplulate pixel data
-	/*WICPixelFormatGUID pixelFormt;
-	IWICBitmapSource* iBitmap;
-	hr = WICConvertBitmapSource(GUID_WICPixelFormat32bppBGRA, bitmapBaseSource, &iBitmap);
-	iBitmap->GetPixelFormat(&pixelFormt);
-	IWICBitmap* formatedBitmap;
-	GetBitmapFromSource(iBitmap, &formatedBitmap);*/
-
+	WICPixelFormatGUID pixelFormt;
+	bitmapBaseSource->GetPixelFormat(&pixelFormt);
+	pIScaledBitmap->GetPixelFormat(&pixelFormt);
 
 	/////////Getting Pixel Data from Base image
 	IWICBitmapLock *pILock = nullptr;
@@ -121,7 +173,7 @@ int main(int argc, char* argv[])
 	BYTE *pv = NULL;
 	hr = pILock->GetDataPointer(&cbBufferSize, &pv);
 	hr = pILock->GetStride(&cbStride);
-	////////////
+	///////////////////////////////////////////
 
 	/////////Getting Pixel Data from the WaterMark(Scaled) image
 	IWICBitmapLock *pIScaledLock = nullptr;
@@ -140,25 +192,20 @@ int main(int argc, char* argv[])
 	BYTE *pvScaled = NULL;
 	hr = pIScaledLock->GetDataPointer(&cbScaledBufferSize, &pvScaled);
 	hr = pIScaledLock->GetStride(&cbScaledStride);
+	/////////////////////////////////////////////
 
 	//this is good to straight blit image
-	for (size_t x = 0; x < uiScalesWidth; x+=3)
+	for (size_t x = 0; x < uiScalesWidth * 3; x+=3)
 	{
 		for (size_t y = 0; y < uiScaledHeight; y++)
 		{
-			
-			//B,G,R//
-			//pv[(x * cbStride) + y]	 = 0;
-			//pv[(x * cbStride) + y + 1] = 0;
-			//pv[(x * cbStride) + y + 2] = 255;
-			//pv[(x * cbStride) + y + 3] = 255;
-			/*pv[(y * cbStride) + x]	   = pvScaled[(y * cbScaledStride) + x] ;
-			pv[(y * cbStride) + x + 1] = pvScaled[(y * cbScaledStride) + x + 1];
-			pv[(y * cbStride) + x + 2] = pvScaled[(y * cbScaledStride) + x + 2];*/
-			
+			if ((int)pvScaled[(y * cbScaledStride) + x + 3] == 0.0f)
+				continue;
 			pv[(y * cbStride) + x]	   = ByteLerp((int)pv[(y * cbStride) + x], (int)pvScaled[(y * cbScaledStride) + x], opacity);
 			pv[(y * cbStride) + x + 1] = ByteLerp((int)pv[(y * cbStride) + x + 1], (int)pvScaled[(y * cbScaledStride) + x + 1], opacity);
 			pv[(y * cbStride) + x + 2] = ByteLerp((int)pv[(y * cbStride) + x + 2], (int)pvScaled[(y * cbScaledStride) + x + 2], opacity);
+			pv[(y * cbStride) + x + 3] = ByteLerp((int)pv[(y * cbStride) + x + 3], (int)pvScaled[(y * cbScaledStride) + x + 3], opacity);
+
 			//pv[(x * cbStride) + y + 3] = 255;
 		}
 	}
@@ -167,12 +214,16 @@ int main(int argc, char* argv[])
 
 	pIScaledLock->Release();
 	pILock->Release();
-	hr = SaveBitmapToFile(pIBaseBitmap, L"..\\Resources\\butterfly.bmp", L"Output.png");
-	hr = SaveBitmapToFile(pIScaledBitmap, L"..\\Resources\\butterfly.bmp", L"OutputScaled.png");
+	cSize = strlen(argv[1]) + 1;
+	mbstowcs(wc, argv[1], cSize);
+	hr = SaveBitmapToFile(pIBaseBitmap, /*L"..\\Resources\\butterfly.bmp"*/wc, L"Output.png");
+	//hr = SaveBitmapToFile(pIScaledBitmap, L"..\\Resources\\Mountain.png", L"OutputScaled.png");
 
 #pragma endregion
-
+	
 	CoUninitialize();
+	cout << "Process Complete Please Look for image file called Output.xxx..." << endl;
+	system("pause");
 	/*pIBitmap->Release();
 	bitmapSource->Release();*/
 	return hr;
@@ -182,7 +233,7 @@ HRESULT LoadBitmapFromFile(
 	const wchar_t *uri,
 	unsigned int destinationWidth,
 	unsigned int destinationHeight,
-	IWICBitmapFrameDecode** bitmapSource)
+	IWICBitmapSource** bitmapSource)
 {
 	HRESULT hr = S_OK;
 
@@ -191,7 +242,7 @@ HRESULT LoadBitmapFromFile(
 	IWICFormatConverter* converter = nullptr;
 	IWICBitmapScaler* scaler = nullptr;
 	IWICImagingFactory* wicFactory = nullptr;
-
+	IWICBitmapFrameDecode* bitmapFrame = nullptr;
 	
 	hr = CoCreateInstance(
 		CLSID_WICImagingFactory, nullptr,
@@ -211,67 +262,72 @@ HRESULT LoadBitmapFromFile(
 	if (SUCCEEDED(hr))
 	{
 		// Create the initial frame.
-		hr = decoder->GetFrame(0, bitmapSource);
+		hr = decoder->GetFrame(0, &bitmapFrame);
 	}
-
 	if (SUCCEEDED(hr))
 	{
-		hr = wicFactory->CreateFormatConverter(&converter);
+		//Making Sure Image has Alpha Channel
+		hr = WICConvertBitmapSource(GUID_WICPixelFormat32bppBGRA, bitmapFrame, bitmapSource);
 	}
-
-	if (SUCCEEDED(hr))
-	{
-		// If a new width or height was specified, create an
-		// IWICBitmapScaler and use it to resize the image.
-		if (destinationWidth != 0 || destinationHeight != 0)
-		{
-			unsigned int originalWidth, originalHeight;
-			hr = (*bitmapSource)->GetSize(&originalWidth, &originalHeight);
-			if (SUCCEEDED(hr))
-			{
-				if (destinationWidth == 0)
-				{
-					float scalar = static_cast<float>(destinationHeight) / static_cast<float>(originalHeight);
-					destinationWidth = static_cast<unsigned int>(scalar * static_cast<float>(originalWidth));
-				}
-				else if (destinationHeight == 0)
-				{
-					float scalar = static_cast<float>(destinationWidth) / static_cast<float>(originalWidth);
-					destinationHeight = static_cast<unsigned int>(scalar * static_cast<float>(originalHeight));
-				}
-
-				hr = wicFactory->CreateBitmapScaler(&scaler);
-				if (SUCCEEDED(hr))
-				{
-					hr = scaler->Initialize(
-						*bitmapSource,
-						destinationWidth,
-						destinationHeight,
-						WICBitmapInterpolationModeLinear);
-				}
-				if (SUCCEEDED(hr))
-				{
-					hr = converter->Initialize(
-						scaler,
-						GUID_WICPixelFormat24bppBGR,
-						WICBitmapDitherTypeNone,
-						nullptr,
-						0.f,
-						WICBitmapPaletteTypeMedianCut);
-				}
-			}
-		}
-		else // Don't scale the image.
-		{
-			hr = converter->Initialize(
-				*bitmapSource,
-				GUID_WICPixelFormat24bppBGR,
-				WICBitmapDitherTypeNone,
-				nullptr,
-				0.f,
-				WICBitmapPaletteTypeMedianCut);
-		}
-	}
+	//if (SUCCEEDED(hr))
+	//{
+	//	hr = wicFactory->CreateFormatConverter(&converter);
+	//}
+	//
+	//if (SUCCEEDED(hr))
+	//{
+	//	// If a new width or height was specified, create an
+	//	// IWICBitmapScaler and use it to resize the image.
+	//	if (destinationWidth != 0 || destinationHeight != 0)
+	//	{
+	//		unsigned int originalWidth, originalHeight;
+	//		hr = (*bitmapSource)->GetSize(&originalWidth, &originalHeight);
+	//		if (SUCCEEDED(hr))
+	//		{
+	//			if (destinationWidth == 0)
+	//			{
+	//				float scalar = static_cast<float>(destinationHeight) / static_cast<float>(originalHeight);
+	//				destinationWidth = static_cast<unsigned int>(scalar * static_cast<float>(originalWidth));
+	//			}
+	//			else if (destinationHeight == 0)
+	//			{
+	//				float scalar = static_cast<float>(destinationWidth) / static_cast<float>(originalWidth);
+	//				destinationHeight = static_cast<unsigned int>(scalar * static_cast<float>(originalHeight));
+	//			}
+	//
+	//			hr = wicFactory->CreateBitmapScaler(&scaler);
+	//			if (SUCCEEDED(hr))
+	//			{
+	//				hr = scaler->Initialize(
+	//					*bitmapSource,
+	//					destinationWidth,
+	//					destinationHeight,
+	//					WICBitmapInterpolationModeLinear);
+	//			}
+	//			if (SUCCEEDED(hr))
+	//			{
+	//				hr = converter->Initialize(
+	//					scaler,
+	//					/*GUID_WICPixelFormat24bppBGR*/GUID_WICPixelFormat32bppBGRA,
+	//					WICBitmapDitherTypeNone,
+	//					nullptr,
+	//					0.f,
+	//					WICBitmapPaletteTypeMedianCut);
+	//			}
+	//		}
+	//	}
+	//	else // Don't scale the image.
+	//	{
+	//		hr = converter->Initialize(
+	//			*bitmapSource,
+	//			/*GUID_WICPixelFormat24bppBGR*/GUID_WICPixelFormat32bppBGRA,
+	//			WICBitmapDitherTypeNone,
+	//			nullptr,
+	//			0.f,
+	//			WICBitmapPaletteTypeMedianCut);
+	//	}
+	//	WICConvertBitmapSource(GUID_WICPixelFormat32bppBGRA, *bitmapSource, (*bitmapSource));
+	//}
 	
 	SafeRelease(wicFactory);
 	SafeRelease(converter);
@@ -419,8 +475,8 @@ HRESULT SaveBitmapToFile(IWICBitmap* updatedBitmap,
 			//Frame variables
 			IWICBitmapFrameDecode* frameDecode;
 			IWICBitmapFrameEncode* frameEncode;
-			IWICMetadataQueryReader* frameQueryReader;
-			IWICMetadataQueryWriter* frameQueryWriter;
+			/*IWICMetadataQueryReader* frameQueryReader;
+			IWICMetadataQueryWriter* frameQueryWriter;*/
 
 			//Get and create image frame
 			if (SUCCEEDED(hr))
@@ -619,10 +675,10 @@ HRESULT LoadScaledBitmapFromFile(
 	IWICBitmap** updatedBitmap)
 {
 
-	IWICBitmapFrameDecode* bitmapSource = nullptr;
+	IWICBitmapSource* bitmapSource = nullptr;
 	IWICImagingFactory* wicFactory = nullptr;
 	IWICBitmapScaler* scaler = nullptr;
-
+	
 	HRESULT hr;
 
 	hr = CoCreateInstance(
@@ -656,3 +712,19 @@ HRESULT LoadScaledBitmapFromFile(
 	return hr;
 }
 
+void Greeting()
+{
+	cout << "//////////////////////////////////////////////////////////////////" << endl;
+	cout << "//                                                              //" << endl;
+	cout << "//                                                              //" << endl;
+	cout << "//                         Welcome User                         //" << endl;
+	cout << "//           Window Imaging Component WaterMark App             //" << endl;
+	cout << "//                         Version 0.2.1                        //" << endl;
+	cout << "//                    Creator: Anthony Ramos                    //" << endl;
+	cout << "//             Please Read the ReadMe.txt for Help              //" << endl;
+	cout << "//                                                              //" << endl;
+	cout << "//                                                              //" << endl;
+	cout << "//////////////////////////////////////////////////////////////////" << endl;
+	system("pause");
+	cout << endl;
+}
