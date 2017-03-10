@@ -12,8 +12,11 @@
 //#include "../Common/resource.h"
 #include <wrl/client.h>
 #include <wincodec.h>
-
+#include <string>
+#include <sstream>
 using namespace std;
 using namespace Microsoft::WRL;
 //using namespace Hilo::Direct2DHelpers;
+#include "HelperFunctions.h"
 
+#define SafeRelease(X) {if(X) {X->Release(); X = nullptr;}}
