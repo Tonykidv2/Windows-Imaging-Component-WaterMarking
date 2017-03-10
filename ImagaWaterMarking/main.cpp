@@ -32,7 +32,8 @@ HRESULT LoadScaledBitmapFromFile(
 
 inline BYTE ByteLerp(int b1, int b2, float percent)
 {
-	return BYTE(b1 + (b2 + b1) * percent);
+	BYTE returning = (b2 - b1) * percent + b1;
+	return returning;
 }
 
 int main(int argc, char* argv[])
@@ -43,8 +44,10 @@ int main(int argc, char* argv[])
 		system("pause");
 		return -1;
 	}*/
-	float opacity = 25.0f;
-	int Scale = 2;
+
+
+	float opacity = .25f;
+	int Scale = 3;
 	IWICBitmapFrameDecode* bitmapBaseSource = nullptr;
 	IWICBitmapFrameDecode* bitmapScaleSource = nullptr;
 	IWICBitmap *pIBaseBitmap = nullptr;
@@ -91,32 +94,7 @@ int main(int argc, char* argv[])
 	UINT WaterMarkWidth;
 	UINT WaterMarkHeight;
 	pIScaledBitmap->GetSize(&WaterMarkWidth, &WaterMarkHeight);
-	//hr = SaveBitmapToFile(pIScaledBitmap, L"..\\Resources\\butterfly.bmp", L"OutputScaled.png");
-	//if (!SUCCEEDED(hr))
-	//{
-	//	cout << "Something went wrong!!!" << endl;
-	//	system("pause");
-	//	return -1;
-	//}
-	//SafeRelease(pIScaledBitmap);
-	//SafeRelease(bitmapScaleSource);
-	//hr = LoadBitmapFromFile(L"OutputScaled.png", 0, 0, &bitmapScaleSource);
-	//if (!SUCCEEDED(hr))
-	//{
-	//	cout << "Something went wrong!!!" << endl;
-	//	system("pause");
-	//	return -1;
-	//}
-	//hr = GetBitmapFromSource(bitmapScaleSource, &pIScaledBitmap);
-	//if (!SUCCEEDED(hr))
-	//{
-	//	cout << "Something went wrong!!!" << endl;
-	//	system("pause");
-	//	return -1;
-	//}
-	//pIScaledBitmap->GetSize(&WaterMarkWidth, &WaterMarkHeight);
-	////I don't need it anymore
-	//remove("OutputScaled.png");
+
 #pragma region minuplulate pixel data
 	/*WICPixelFormatGUID pixelFormt;
 	IWICBitmapSource* iBitmap;
@@ -163,21 +141,24 @@ int main(int argc, char* argv[])
 	hr = pIScaledLock->GetDataPointer(&cbScaledBufferSize, &pvScaled);
 	hr = pIScaledLock->GetStride(&cbScaledStride);
 
-	//this is good to straight blit
-	for (size_t x = 0; x < uiScalesWidth; x++)
+	//this is good to straight blit image
+	for (size_t x = 0; x < uiScalesWidth; x+=3)
 	{
-		for (size_t y = 0; y < uiScaledHeight; y+=3)
+		for (size_t y = 0; y < uiScaledHeight; y++)
 		{
-			if ((x * cbScaledStride) + y >= cbScaledBufferSize)
-				break;
+			
 			//B,G,R//
 			//pv[(x * cbStride) + y]	 = 0;
 			//pv[(x * cbStride) + y + 1] = 0;
 			//pv[(x * cbStride) + y + 2] = 255;
 			//pv[(x * cbStride) + y + 3] = 255;
-			pv[(x * cbStride) + y]	 = pvScaled[(x * cbScaledStride) + y] ;
-			pv[(x * cbStride) + y + 1] = pvScaled[(x * cbScaledStride) + y + 1];
-			pv[(x * cbStride) + y + 2] = pvScaled[(x * cbScaledStride) + y + 2];
+			/*pv[(y * cbStride) + x]	   = pvScaled[(y * cbScaledStride) + x] ;
+			pv[(y * cbStride) + x + 1] = pvScaled[(y * cbScaledStride) + x + 1];
+			pv[(y * cbStride) + x + 2] = pvScaled[(y * cbScaledStride) + x + 2];*/
+			
+			pv[(y * cbStride) + x]	   = ByteLerp((int)pv[(y * cbStride) + x], (int)pvScaled[(y * cbScaledStride) + x], opacity);
+			pv[(y * cbStride) + x + 1] = ByteLerp((int)pv[(y * cbStride) + x + 1], (int)pvScaled[(y * cbScaledStride) + x + 1], opacity);
+			pv[(y * cbStride) + x + 2] = ByteLerp((int)pv[(y * cbStride) + x + 2], (int)pvScaled[(y * cbScaledStride) + x + 2], opacity);
 			//pv[(x * cbStride) + y + 3] = 255;
 		}
 	}
