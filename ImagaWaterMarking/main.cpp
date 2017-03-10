@@ -4,6 +4,7 @@
 int main(int argc, char* argv[])
 {
 	Greeting();
+	//Making sure there 2 paths for images
 	if (argc != 3)
 	{
 		cout << "Incorrect Parameters" << endl;
@@ -11,6 +12,7 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
+	//We got them now user needs to tell me if they want to edit the water mark image
 	cout << "Images Recieved" << endl;
 	float opacity;
 	int Scale;
@@ -21,22 +23,28 @@ int main(int argc, char* argv[])
 	CheckScale(Scale);
 
 	//making a ratio
+	//opacity should be a ratio between 0 & 1
 	opacity /= 100;
 	cout << "Input Confirm Please Wait....." << endl;
 
+	//Some Varibles I need.....
 	IWICBitmapSource* bitmapBaseSource = nullptr;
 	IWICBitmapSource* bitmapScaleSource = nullptr;
 	IWICBitmap *pIBaseBitmap = nullptr;
 	IWICBitmap *pIScaledBitmap = nullptr;
 
-
+	//I would need this to start initailizing  IWIC data members
 	CoInitialize(nullptr);
+
+	//Error Checking
 	HRESULT hr = S_OK;
 	/////////////Getting backimage Image
 	size_t cSize = strlen(argv[1]) + 1;
 	wchar_t wc[255];
 	mbstowcs(wc, argv[1], cSize);
-	hr = LoadBitmapFromFile(wc, 0, 0, &bitmapBaseSource);
+
+	//Thank you Very much MSDN
+	hr = LoadBitmapFromFile(/*L"..\\Resources\\butterfly.png"*/wc, 0, 0, &bitmapBaseSource);
 	if (!SUCCEEDED(hr))
 	{
 		cout << "Something went wrong!!!" << endl;
@@ -60,17 +68,19 @@ int main(int argc, char* argv[])
 	UINT WaterMarkHeight;
 	cSize = strlen(argv[2]) + 1;
 	mbstowcs(wc, argv[2], cSize);
-	hr = LoadBitmapFromFile(wc, 0, 0, &bitmapScaleSource);
+	hr = LoadBitmapFromFile(/*L"..\\Resources\\Temp2.png"*/wc, 0, 0, &bitmapScaleSource);
 	if (!SUCCEEDED(hr))
 	{
 		cout << "Something went wrong!!!" << endl;
 		system("pause");
 		return -1;
 	}
+	//Getting the size before I scale it. then releasing it to the wild.....
 	bitmapScaleSource->GetSize(&WaterMarkWidth, &WaterMarkHeight);
+	SafeRelease(bitmapBaseSource);
 	if (WaterMarkWidth >= width || WaterMarkHeight >= height)
 	{
-		hr = LoadScaledBitmapFromFile(/*L"..\\Resources\\Mountain.png"*/wc, width / Scale, height / Scale, &pIScaledBitmap);
+		hr = LoadScaledBitmapFromFile(/*L"..\\Resources\\Temp2.png"*/wc, width / Scale, height / Scale, &pIScaledBitmap);
 		if (!SUCCEEDED(hr))
 		{
 			cout << "Something went wrong!!!" << endl;
@@ -80,20 +90,22 @@ int main(int argc, char* argv[])
 	}
 	else
 	{
-		hr = LoadScaledBitmapFromFile(/*L"..\\Resources\\Mountain.png"*/wc, WaterMarkWidth, WaterMarkWidth, &pIScaledBitmap);
+		hr = LoadScaledBitmapFromFile(/*L"..\\Resources\\Temp2.png"*/wc, WaterMarkWidth, WaterMarkWidth, &pIScaledBitmap);
 		if (!SUCCEEDED(hr))
 		{
 			cout << "Something went wrong!!!" << endl;
 			system("pause");
 			return -1;
 		}
+
 	}
 	pIScaledBitmap->GetSize(&WaterMarkWidth, &WaterMarkHeight);
 
 #pragma region minuplulate pixel data
-	WICPixelFormatGUID pixelFormt;
-	bitmapBaseSource->GetPixelFormat(&pixelFormt);
-	pIScaledBitmap->GetPixelFormat(&pixelFormt);
+	// I just want to make sure each bitmap has an Alpha channel
+	//WICPixelFormatGUID pixelFormt;
+	/*bitmapBaseSource->GetPixelFormat(&pixelFormt);
+	pIScaledBitmap->GetPixelFormat(&pixelFormt);*/
 
 	/////////Getting Pixel Data from Base image
 	IWICBitmapLock *pILock = nullptr;
@@ -110,6 +122,7 @@ int main(int argc, char* argv[])
 	}
 	UINT cbBufferSize = 0;
 	BYTE *pv = NULL;
+	//This will give me the array of pixels to edit
 	hr = pILock->GetDataPointer(&cbBufferSize, &pv);
 	hr = pILock->GetStride(&cbStride);
 	///////////////////////////////////////////
@@ -134,7 +147,8 @@ int main(int argc, char* argv[])
 	/////////////////////////////////////////////
 
 	//this is good to straight blit image
-	for (size_t x = 0; x < uiScalesWidth * 3; x+=3)
+	//Apparently I have to multiple by 4 will find out why
+	for (size_t x = 0; x < uiScalesWidth * 4; x+=4)
 	{
 		for (size_t y = 0; y < uiScaledHeight; y++)
 		{
@@ -148,16 +162,19 @@ int main(int argc, char* argv[])
 			pv[(y * cbStride) + x]	   = ByteLerp((int)pv[(y * cbStride) + x], (int)pvScaled[(y * cbScaledStride) + x], opacity);
 			pv[(y * cbStride) + x + 1] = ByteLerp((int)pv[(y * cbStride) + x + 1], (int)pvScaled[(y * cbScaledStride) + x + 1], opacity);
 			pv[(y * cbStride) + x + 2] = ByteLerp((int)pv[(y * cbStride) + x + 2], (int)pvScaled[(y * cbScaledStride) + x + 2], opacity);
-			pv[(y * cbStride) + x + 3] = ByteLerp((int)pv[(y * cbStride) + x + 3], (int)pvScaled[(y * cbScaledStride) + x + 3], opacity);
+			//We'll worry about this later
+			//pv[(y * cbStride) + x + 3] = ByteLerp((int)pv[(y * cbStride) + x + 3], (int)pvScaled[(y * cbScaledStride) + x + 3], opacity);
 		}
 	}
 
 	
-
+	//Releasing some stuff
 	pIScaledLock->Release();
 	pILock->Release();
 	cSize = strlen(argv[1]) + 1;
 	mbstowcs(wc, argv[1], cSize);
+
+	//Thank you MSDN
 	hr = SaveBitmapToFile(pIBaseBitmap, /*L"..\\Resources\\butterfly.bmp"*/wc, L"Output.png");
 	//hr = SaveBitmapToFile(pIScaledBitmap, L"..\\Resources\\Mountain.png", L"OutputScaled.png");
 
