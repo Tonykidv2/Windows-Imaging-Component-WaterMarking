@@ -2,6 +2,7 @@
 #include <iostream>
 #include <wincodec.h>
 #include <fstream>
+#include <vector>
 using namespace std;
 
 
@@ -29,6 +30,11 @@ HRESULT LoadScaledBitmapFromFile(
 	unsigned int destinationHeight,
 	IWICBitmap** updatedBitmap);
 
+inline BYTE ByteLerp(int b1, int b2, float percent)
+{
+	return BYTE(b1 + (b2 + b1) * percent);
+}
+
 int main(int argc, char* argv[])
 {
 	/*if (argc != 2)
@@ -37,14 +43,18 @@ int main(int argc, char* argv[])
 		system("pause");
 		return -1;
 	}*/
-	IWICBitmapFrameDecode* bitmapSource = nullptr;
+	float opacity = 25.0f;
+	int Scale = 2;
+	IWICBitmapFrameDecode* bitmapBaseSource = nullptr;
+	IWICBitmapFrameDecode* bitmapScaleSource = nullptr;
+	IWICBitmap *pIBaseBitmap = nullptr;
+	IWICBitmap *pIScaledBitmap = nullptr;
+
+
 	CoInitialize(nullptr);
-
-	//Creating Factories
 	HRESULT hr = S_OK;
-
-	//Getting backimage Image
-	hr = LoadBitmapFromFile(L"..\\Resources\\butterfly.bmp", 0, 0, &bitmapSource);
+	/////////////Getting backimage Image
+	hr = LoadBitmapFromFile(L"..\\Resources\\butterfly.bmp", 0, 0, &bitmapBaseSource);
 	if (!SUCCEEDED(hr))
 	{
 		cout << "Something went wrong!!!" << endl;
@@ -52,80 +62,77 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 	//Getting bitmap
-	IWICBitmap *pIBitmap = nullptr;
-	hr = GetBitmapFromSource(bitmapSource, &pIBitmap);
+	hr = GetBitmapFromSource(bitmapBaseSource, &pIBaseBitmap);
 	if (!SUCCEEDED(hr))
 	{
 		cout << "Something went wrong!!!" << endl;
 		system("pause");
 		return -1;
 	}
-	/*IWICImagingFactory* wicFactory = nullptr;
-	IWICBitmapScaler* scaler = nullptr;
-	
-
-	hr = CoCreateInstance(
-		CLSID_WICImagingFactory, nullptr,
-		CLSCTX_INPROC_SERVER, IID_IWICImagingFactory, (LPVOID*)&wicFactory);
-	hr = wicFactory->CreateBitmapScaler(&scaler);
-	if (SUCCEEDED(hr))
-	{
-		hr = scaler->Initialize(
-			bitmapSource,
-			1000,
-			1000,
-			WICBitmapInterpolationModeLinear);
-	}
-	IWICBitmap* scaledBitmap;
-	hr = GetBitmapFromScaler(scaler, &scaledBitmap);
-	hr = SaveBitmapToFile(scaledBitmap, L"..\\Resources\\butterfly.bmp", L"OutputScaled.png");
-	UINT h;
-	UINT w;
-	scaledBitmap->GetSize(&w, &h);
-	WICPixelFormatGUID ThecurrentPixelFormat;
-	hr = bitmapSource->GetPixelFormat(&ThecurrentPixelFormat);*/
-	//Getting Scaled WaterMark
-	IWICBitmap* bitmapScaledSource = nullptr;
-	hr = LoadScaledBitmapFromFile(L"..\\Resources\\butterfly.bmp", 1000, 1000, &bitmapScaledSource);
-	if (!SUCCEEDED(hr))
-	{
-		cout << "Something went wrong!!!" << endl;
-		system("pause");
-		return -1;
-	}
-	
 	UINT width;
 	UINT height;
-	hr = bitmapScaledSource->GetSize(&width, &height);
+	hr = pIBaseBitmap->GetSize(&width, &height);
+
+	////////////Getting Scaled WaterMark
+	hr = LoadBitmapFromFile(L"..\\Resources\\butterfly.bmp", 0, 0, &bitmapScaleSource);
 	if (!SUCCEEDED(hr))
 	{
 		cout << "Something went wrong!!!" << endl;
 		system("pause");
 		return -1;
 	}
-
-	
-
+	hr = LoadScaledBitmapFromFile(L"..\\Resources\\butterfly.bmp", width/Scale, height/Scale, &pIScaledBitmap);
+	if (!SUCCEEDED(hr))
+	{
+		cout << "Something went wrong!!!" << endl;
+		system("pause");
+		return -1;
+	}
+	UINT WaterMarkWidth;
+	UINT WaterMarkHeight;
+	pIScaledBitmap->GetSize(&WaterMarkWidth, &WaterMarkHeight);
+	//hr = SaveBitmapToFile(pIScaledBitmap, L"..\\Resources\\butterfly.bmp", L"OutputScaled.png");
+	//if (!SUCCEEDED(hr))
+	//{
+	//	cout << "Something went wrong!!!" << endl;
+	//	system("pause");
+	//	return -1;
+	//}
+	//SafeRelease(pIScaledBitmap);
+	//SafeRelease(bitmapScaleSource);
+	//hr = LoadBitmapFromFile(L"OutputScaled.png", 0, 0, &bitmapScaleSource);
+	//if (!SUCCEEDED(hr))
+	//{
+	//	cout << "Something went wrong!!!" << endl;
+	//	system("pause");
+	//	return -1;
+	//}
+	//hr = GetBitmapFromSource(bitmapScaleSource, &pIScaledBitmap);
+	//if (!SUCCEEDED(hr))
+	//{
+	//	cout << "Something went wrong!!!" << endl;
+	//	system("pause");
+	//	return -1;
+	//}
+	//pIScaledBitmap->GetSize(&WaterMarkWidth, &WaterMarkHeight);
+	////I don't need it anymore
+	//remove("OutputScaled.png");
 #pragma region minuplulate pixel data
+	/*WICPixelFormatGUID pixelFormt;
+	IWICBitmapSource* iBitmap;
+	hr = WICConvertBitmapSource(GUID_WICPixelFormat32bppBGRA, bitmapBaseSource, &iBitmap);
+	iBitmap->GetPixelFormat(&pixelFormt);
+	IWICBitmap* formatedBitmap;
+	GetBitmapFromSource(iBitmap, &formatedBitmap);*/
 
+
+	/////////Getting Pixel Data from Base image
 	IWICBitmapLock *pILock = nullptr;
-	UINT uiWidth = 100;
-	UINT uiHeight = 100;
+	UINT uiWidth = WaterMarkWidth;
+	UINT uiHeight = WaterMarkHeight;
 	UINT cbStride;
-	WICRect rcLock = { 100, 100, uiWidth, uiHeight };
-
-	
-	if (!SUCCEEDED(hr))
-	{
-		cout << "Something went wrong!!!" << endl;
-		system("pause");
-		return -1;
-	}
-	// Obtain a bitmap lock for exclusive write.
-	// The lock is for a 100x100 rectangle starting at the top left of the
-	// bitmap.
-	hr = pIBitmap->Lock(&rcLock, WICBitmapLockWrite, &pILock);
-	
+	WICRect rcLock = { 0, 0, uiWidth, uiHeight };
+	hr = pIBaseBitmap->Lock(&rcLock, WICBitmapLockWrite, &pILock);
 	if (!SUCCEEDED(hr))
 	{
 		cout << "Something went wrong!!!" << endl;
@@ -134,32 +141,54 @@ int main(int argc, char* argv[])
 	}
 	UINT cbBufferSize = 0;
 	BYTE *pv = NULL;
-
 	hr = pILock->GetDataPointer(&cbBufferSize, &pv);
 	hr = pILock->GetStride(&cbStride);
-	WICPixelFormatGUID pixelFormt;
-	pILock->GetPixelFormat(&pixelFormt);
-	IWICBitmapSource* iBitmap;
-	hr = WICConvertBitmapSource(GUID_WICPixelFormat32bppBGRA, bitmapSource, &iBitmap);
-	iBitmap->GetPixelFormat(&pixelFormt);
-	
+	////////////
+
+	/////////Getting Pixel Data from the WaterMark(Scaled) image
+	IWICBitmapLock *pIScaledLock = nullptr;
+	UINT uiScalesWidth = WaterMarkWidth;
+	UINT uiScaledHeight = WaterMarkHeight;
+	UINT cbScaledStride;
+	WICRect rcScaledLock = { 0, 0, uiScalesWidth, uiScaledHeight };
+	hr = pIScaledBitmap->Lock(&rcScaledLock, WICBitmapLockWrite, &pIScaledLock);
+	if (!SUCCEEDED(hr))
+	{
+		cout << "Something went wrong!!!" << endl;
+		system("pause");
+		return -1;
+	}
+	UINT cbScaledBufferSize = 0;
+	BYTE *pvScaled = NULL;
+	hr = pIScaledLock->GetDataPointer(&cbScaledBufferSize, &pvScaled);
+	hr = pIScaledLock->GetStride(&cbScaledStride);
 
 	//this is good to straight blit
-	for (size_t x = 0; x < uiWidth; x++)
+	for (size_t x = 0; x < uiScalesWidth; x++)
 	{
-		for (size_t y = 0; y < uiHeight; y+=3)
+		for (size_t y = 0; y < uiScaledHeight; y+=3)
 		{
-			//pv[(x * cbStride) + y] = 255;
-			pv[(x * cbStride) + y] = 0;
-			pv[(x * cbStride) + y + 1] = 0;
-			pv[(x * cbStride) + y + 2] = 255;
+			if ((x * cbScaledStride) + y >= cbScaledBufferSize)
+				break;
+			//B,G,R//
+			//pv[(x * cbStride) + y]	 = 0;
+			//pv[(x * cbStride) + y + 1] = 0;
+			//pv[(x * cbStride) + y + 2] = 255;
+			//pv[(x * cbStride) + y + 3] = 255;
+			pv[(x * cbStride) + y]	 = pvScaled[(x * cbScaledStride) + y] ;
+			pv[(x * cbStride) + y + 1] = pvScaled[(x * cbScaledStride) + y + 1];
+			pv[(x * cbStride) + y + 2] = pvScaled[(x * cbScaledStride) + y + 2];
+			//pv[(x * cbStride) + y + 3] = 255;
 		}
 	}
 
+	
 
+	pIScaledLock->Release();
 	pILock->Release();
-	hr = SaveBitmapToFile(pIBitmap, L"..\\Resources\\butterfly.bmp", L"Output.png");
-	hr = SaveBitmapToFile(bitmapScaledSource, L"..\\Resources\\butterfly.bmp", L"OutputScaled.png");
+	hr = SaveBitmapToFile(pIBaseBitmap, L"..\\Resources\\butterfly.bmp", L"Output.png");
+	hr = SaveBitmapToFile(pIScaledBitmap, L"..\\Resources\\butterfly.bmp", L"OutputScaled.png");
+
 #pragma endregion
 
 	CoUninitialize();
@@ -645,3 +674,4 @@ HRESULT LoadScaledBitmapFromFile(
 	SafeRelease(bitmapSource);
 	return hr;
 }
+
