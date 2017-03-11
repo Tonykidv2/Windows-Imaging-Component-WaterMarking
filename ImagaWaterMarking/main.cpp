@@ -165,8 +165,8 @@ int main(int argc, char* argv[])
 			if ((int)pvScaled[(y * cbScaledStride) + x + 3] == 0.0f)
 				continue;
 			if (pvScaled[(y * cbScaledStride) + x] == B && Ignoreacolor)
-				if (pvScaled[(y * cbScaledStride) + x] == G && Ignoreacolor)
-					if (pvScaled[(y * cbScaledStride) + x] == R && Ignoreacolor)
+				if (pvScaled[(y * cbScaledStride) + x + 1] == G && Ignoreacolor)
+					if (pvScaled[(y * cbScaledStride) + x + 2] == R && Ignoreacolor)
 						continue;
 
 			pv[(y * cbStride) + x]	   = ByteLerp((int)pv[(y * cbStride) + x], (int)pvScaled[(y * cbScaledStride) + x], opacity);
