@@ -32,3 +32,4 @@ void Greeting();
 void CheckOpacity(float& _opacity);
 void CheckScale(int& _scale);
 void CheckIgnoreColor(bool& _ignoring, int& _r, int& _g, int& _b);
+void ImageCenter(bool& _center);

@@ -17,10 +17,13 @@ int main(int argc, char* argv[])
 	float opacity;
 	int Scale;
 	bool Ignoreacolor = false;
+	bool Center = false;
 	int B, G, R;
+	
 	CheckOpacity(opacity);
 	CheckIgnoreColor(Ignoreacolor, R, G, B);
 	CheckScale(Scale);
+	ImageCenter(Center);
 
 	//making a ratio
 	//opacity should be a ratio between 0 & 1
@@ -97,7 +100,6 @@ int main(int argc, char* argv[])
 			system("pause");
 			return -1;
 		}
-
 	}
 	pIScaledBitmap->GetSize(&WaterMarkWidth, &WaterMarkHeight);
 
@@ -109,10 +111,18 @@ int main(int argc, char* argv[])
 
 	/////////Getting Pixel Data from Base image
 	IWICBitmapLock *pILock = nullptr;
-	UINT uiWidth = WaterMarkWidth;
-	UINT uiHeight = WaterMarkHeight;
+	INT uiWidth = WaterMarkWidth;
+	INT uiHeight = WaterMarkHeight;
 	UINT cbStride;
+	INT h = height /2 - WaterMarkHeight/2;
+	INT w = width / 2 - WaterMarkWidth/2;
+	//Top Left Corner
+
 	WICRect rcLock = { 0, 0, uiWidth, uiHeight };
+	//Center
+	if(Center)
+		rcLock = { w,h,uiWidth,uiHeight };
+
 	hr = pIBaseBitmap->Lock(&rcLock, WICBitmapLockWrite, &pILock);
 	if (!SUCCEEDED(hr))
 	{
@@ -129,8 +139,8 @@ int main(int argc, char* argv[])
 
 	/////////Getting Pixel Data from the WaterMark(Scaled) image
 	IWICBitmapLock *pIScaledLock = nullptr;
-	UINT uiScalesWidth = WaterMarkWidth;
-	UINT uiScaledHeight = WaterMarkHeight;
+	INT uiScalesWidth = WaterMarkWidth;
+	INT uiScaledHeight = WaterMarkHeight;
 	UINT cbScaledStride;
 	WICRect rcScaledLock = { 0, 0, uiScalesWidth, uiScaledHeight };
 	hr = pIScaledBitmap->Lock(&rcScaledLock, WICBitmapLockWrite, &pIScaledLock);

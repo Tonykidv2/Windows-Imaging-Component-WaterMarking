@@ -587,3 +587,28 @@ void CheckIgnoreColor(bool & _ignoring, int & _r, int & _g, int & _b)
 		cin.ignore();
 	}
 }
+
+void ImageCenter(bool & _center)
+{
+	char input;
+	cout << endl;
+	cout << "Would you like the Watermark centered on the screen Y/N: ";
+	cin >> input;
+	while (true)
+	{
+		if (input == 'y' || input == 'Y')
+		{
+			_center = true;
+			break;
+		}
+		if (input == 'n' || input == 'N')
+		{
+			_center = false;
+			break;
+		}
+		cout << endl;
+		cin.ignore();
+		cout << "Would you like the Watermark centered on the screen Y/N: ";
+		cin >> input;
+	}
+}
